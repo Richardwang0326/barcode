@@ -5,7 +5,7 @@ from mmcv.cnn import normal_init, xavier_init
 from torch.autograd import Function
 from torch.nn.modules.module import Module
 
-import carafe_cuda, carafe_naive_cuda
+from src import carafe_cuda, carafe_naive_cuda
 
 
 class CARAFENaiveFunction(Function):
