@@ -4,8 +4,6 @@ import torch.nn.functional as F
 from torchvision.models.resnet import ResNet
 import torchvision.transforms as transforms
 from torchvision import models
-import sys
-sys.path.append('/home/developer/yumi_barcode_flatten/catkin_ws/src/nn_predict/carafe')
 from carafe import CARAFEPack
 n_class = 2
 
