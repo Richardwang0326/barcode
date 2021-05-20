@@ -9,10 +9,8 @@ from fcn_resnet import build_fcn_resnet
 
 class NNPrediction:
     def __init__(self):
-        self.cv_bridge = CvBridge()
-        r = rospkg.RosPack()
-        path = r.get_path('barcode_detection')
-        model_file, self.network = self.build_nn()
+
+        self.network = build_fcn_resnet()
 
         self.labels = ['background', 'barcode']
         self.use_gpu = torch.cuda.is_available()
@@ -20,29 +18,8 @@ class NNPrediction:
         if self.use_gpu:
             self.network = self.network.cuda()
 
-        state_dict = torch.load(os.path.join(path, "models", model_file))
-        self.network.load_state_dict(state_dict)
-        self.network.eval()
-
-        rospy.loginfo('nn predict node ready!')
-
-    def build_nn(self):
-        model_file = 'DRes_Carafe_FCN.pkl'
-        network = build_fcn_resnet()
-        return model_file, network
-
-    def predict_cb(self, req):
-        img_msg = rospy.wait_for_message('/camera/color/image_raw', Image)
-        cv_image = self.cv_bridge.imgmsg_to_cv2(img_msg, "bgr8")
-        predict = self.predict(cv_image)
-        mask = np.zeros((720, 1280))
-        predict = cv2.resize(predict, (960, 720), interpolation=cv2.INTER_NEAREST)
-        mask[:, 160:1120] = predict
-        mask[mask != 0] = 255
-        mask = mask.astype(np.uint8)
-        res = GetPredictionResponse()
-        res.result = self.cv_bridge.cv2_to_imgmsg(mask, "8UC1")
-        return res
+    def load_weight(self, weight):
+        return self.network.load_state_dict(weight)
 
     def predict(self, img):
         means = np.array([103.939, 116.779, 123.68]) / 255.
@@ -63,14 +40,12 @@ class NNPrediction:
         pred = output.transpose(0, 2, 3, 1).reshape(-1, len(self.labels)).argmax(axis=1).reshape(1, h, w)
         pred = pred[0]
         pred = np.int8(pred)
-        return pred
 
-    def onShutdown(self):
-        rospy.loginfo("Shutdown.")
+        mask = np.zeros((720, 1280))
+        predict = cv2.resize(pred, (960, 720), interpolation=cv2.INTER_NEAREST)
+        mask[:, 160:1120] = predict
+        mask[mask != 0] = 255
+        mask = mask.astype(np.uint8)
+        return mask
 
 
-if __name__ == '__main__':
-    rospy.init_node('nn_prediction_node', anonymous=False)
-    nn_prediction = NNPrediction()
-    rospy.on_shutdown(nn_prediction.onShutdown)
-    rospy.spin()
